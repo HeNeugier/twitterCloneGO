@@ -1,0 +1,9 @@
+#-- This pattern will set all binaries created to be ignored --
+# Ignore all entries
+*  
+# Un-ignore directories at any depth
+!*/
+# Un-ignore files whose names contain .{extension}
+!*.*
+
+
