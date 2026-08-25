@@ -21,10 +21,10 @@ func main() {
 
 	//-- Muxxing Handlers start here --
 	//---------------------------------
-	myMux.HandleFunc("GET /healthz", readinessHandler)
+	myMux.HandleFunc("GET /api/healthz", readinessHandler)
 	//- middleware muxxing
-	myMux.HandleFunc("GET /metrics", apiCfg.metricsHandler)
-	myMux.HandleFunc("POST /reset", apiCfg.metricsResetHandler)
+	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
+	myMux.HandleFunc("POST /admin/reset", apiCfg.metricsResetHandler)
 	
 	//- Helpers
 	fileServer := http.FileServer(http.Dir(filepathRoot))
