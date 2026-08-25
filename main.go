@@ -22,7 +22,8 @@ func main() {
 	//-- Muxxing Handlers start here --
 	//---------------------------------
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
-	//- middleware muxxing
+	myMux.HandleFunc("POST /api/validate_chirp", validateChirpsHandler)
+
 	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	myMux.HandleFunc("POST /admin/reset", apiCfg.metricsResetHandler)
 	
