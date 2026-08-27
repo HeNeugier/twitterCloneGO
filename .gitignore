@@ -6,4 +6,4 @@
 # Un-ignore files whose names contain .{extension}
 !*.*
 
-
+.pg*
