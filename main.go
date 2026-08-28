@@ -1,23 +1,49 @@
 package main
 
 import (
+	"database/sql"
 	"fmt"
+	"log"
 	"net/http"
+	"os"
 	"sync/atomic"
+
+	"github.com/HeNeugier/twitterCloneGO/internal/database"
+	"github.com/joho/godotenv"
+	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
 	fileserverHits atomic.Int32
+	dbQuery *database.Queries
 }
 
 func main() {
+	//-- Import .env into values in code --
+	godotenv.Load()
+	dbURL := os.Getenv("DB_URL")
+	if dbURL == "" {
+		log.Fatal("DB_URL .env variable must be set")
+	}
+
+	//-- Open a connection to our DB --
+	db, err := sql.Open("postgres", dbURL)
+	if err != nil {
+		log.Fatalf("Database failed to open: %s", err)
+		return
+	}
+	dbQueries := database.New(db)
+
 	//-- Define Constants --
 	const filepathRoot = "."
 	const port = "8080"
 
 	//-- Create our traffic director (mux: multiplexer) and config struct --
 	myMux := http.NewServeMux()
-	apiCfg := &apiConfig{}
+	apiCfg := &apiConfig{
+		fileserverHits: 	atomic.Int32{},
+		dbQuery: 					dbQueries,
+	}
 
 	//-- Muxxing Handlers start here --
 	//---------------------------------

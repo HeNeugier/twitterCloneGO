@@ -10,18 +10,47 @@
   outputs = { self, nixpkgs }:
     let
       # This currently supports Linux only.
-      systems = [ "x86_64-linux" "aarch64-linux" ];
+      systems = [ 
+        "x86_64-linux" 
+        "aarch64-linux" 
+      ];
 
       forAllSystems = f:
         nixpkgs.lib.genAttrs systems (system:
           f {
-            pkgs = import nixpkgs { inherit system; };
+            pkgs = import nixpkgs { 
+              inherit system; 
+            };
           });
+      	  
+      # This is defining our one custom pkg as a function that accepts 'pkgs'
+      # This allows us to avoid having to specify 'let in' again
+      bootdev-cli-edge = pkgs: 
+        pkgs.bootdev-cli.overrideAttrs (
+          finalAttrs: previousAttrs: {
+            version = "1.32.1";
+
+            src = pkgs.fetchFromGitHub {
+              owner = "bootdotdev";
+                repo = "bootdev";
+                tag = "v${finalAttrs.version}";
+                hash = "sha256-DScpeUQdkzJy+RVkA8ZmGzp5Z9YzkvZViCoov64WAJk=";
+            };
+
+            vendorHash = "sha256-ZDioEU5uPCkd+kC83cLlpgzyOsnpj2S7N+lQgsQb8uY=";
+          }
+        );
+
     in {
       devShells = forAllSystems ({ pkgs }: {
         default = pkgs.mkShell {
           packages = with pkgs; [
             postgresql
+            go
+            goose
+            sqlc
+          ] ++ [
+            (bootdev-cli-edge pkgs)
           ];
 
           shellHook = ''
@@ -32,7 +61,7 @@
             export PGHOST="$PWD/.pgsocket"
 
             export PGPORT="55432"
-            export PGDATABASE="learning"
+            export PGDATABASE="chirpy"
             export PGUSER="$USER"
 
             mkdir -p "$PGHOST"
