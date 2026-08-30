@@ -7,3 +7,7 @@ VALUES (
     $1
 )
 RETURNING *;
+
+-- name: ClearDatabase :exec
+DELETE FROM users;
+

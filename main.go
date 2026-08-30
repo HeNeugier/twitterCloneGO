@@ -14,8 +14,16 @@ import (
 )
 
 type apiConfig struct {
-	fileserverHits atomic.Int32
-	dbQuery *database.Queries
+	fileserverHits	atomic.Int32
+	dbQuery 				*database.Queries
+	platform				string
+}
+
+type User struct {
+	ID					uuid.UUID		`json:"id"`
+	CreatedAt		time.Time  	`json:"created_at"`
+	UpdatedAt		time.Time		`json:"updated_at"`
+	Email				string			`json:"email"`
 }
 
 func main() {
@@ -24,6 +32,10 @@ func main() {
 	dbURL := os.Getenv("DB_URL")
 	if dbURL == "" {
 		log.Fatal("DB_URL .env variable must be set")
+	}
+	platform := os.Getenv("PLATFORM")
+	if platform == "" {
+		log.Fatal("PLATFORM .env variable must be set")
 	}
 
 	//-- Open a connection to our DB --
@@ -43,12 +55,14 @@ func main() {
 	apiCfg := &apiConfig{
 		fileserverHits: 	atomic.Int32{},
 		dbQuery: 					dbQueries,
+		platform:					platform,
 	}
 
 	//-- Muxxing Handlers start here --
 	//---------------------------------
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
 	myMux.HandleFunc("POST /api/validate_chirp", validateChirpsHandler)
+	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
 
 	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	myMux.HandleFunc("POST /admin/reset", apiCfg.metricsResetHandler)
