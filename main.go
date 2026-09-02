@@ -7,7 +7,9 @@ import (
 	"net/http"
 	"os"
 	"sync/atomic"
+	"time"
 
+	"github.com/google/uuid"
 	"github.com/HeNeugier/twitterCloneGO/internal/database"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
@@ -65,7 +67,7 @@ func main() {
 	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
 
 	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
-	myMux.HandleFunc("POST /admin/reset", apiCfg.metricsResetHandler)
+	myMux.HandleFunc("POST /admin/reset", apiCfg.clearDatabaseHandler)
 	
 	//- Helpers
 	fileServer := http.FileServer(http.Dir(filepathRoot))

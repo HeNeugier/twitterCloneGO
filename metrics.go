@@ -27,6 +27,7 @@ func (cfg *apiConfig) metricsIncMiddleware(next http.Handler) http.Handler {
 	})
 }
 
+//-- DEPRECATED --
 func (cfg *apiConfig) metricsResetHandler(w http.ResponseWriter, _ *http.Request) {
 	cfg.fileserverHits.Store(0)
 	w.WriteHeader(http.StatusOK)
