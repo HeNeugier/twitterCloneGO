@@ -93,3 +93,32 @@ func filterProfanity(message string, profanity []string) string {
 	}
 	return strings.Join(words, " ")
 }
+
+
+func (cfg *apiConfig) retrieveAllChirpsHandler(w http.ResponseWriter, r *http.Request) {
+	dbChirps, err := cfg.dbQuery.RetrieveChirps(r.Context())
+	if err != nil {
+		respondWithError(
+			w, 
+			http.StatusInternalServerError, 
+			"An error occurred when retrieving the chirps.", 
+			err,
+		)
+		return
+	}
+
+	//-- Cast our dbChirp type to our expected form Chirp
+	chirps := make([]Chirp, 0, len(dbChirps))
+	for _, dbChirp := range dbChirps {
+		chirps = append(chirps, Chirp{
+			ID: 				dbChirp.ID,
+			CreatedAt:	dbChirp.CreatedAt,
+			UpdatedAt:	dbChirp.UpdatedAt,
+			Body:				dbChirp.Body,
+			UserID:			dbChirp.UserID,
+		})
+	}
+
+	respondWithJSON(w, http.StatusOK, chirps)
+	
+}
