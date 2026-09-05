@@ -65,6 +65,7 @@ func main() {
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
 	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
 	myMux.HandleFunc("GET /api/chirps", apiCfg.retrieveAllChirpsHandler)
+	myMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.retrieveChirp)
 	myMux.HandleFunc("POST /api/chirps", apiCfg.postValidChirpHandler)
 
 	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
