@@ -9,23 +9,24 @@ import (
 	"sync/atomic"
 	"time"
 
-	"github.com/google/uuid"
 	"github.com/HeNeugier/twitterCloneGO/internal/database"
+
+	"github.com/google/uuid"
 	"github.com/joho/godotenv"
 	_ "github.com/lib/pq"
 )
 
 type apiConfig struct {
-	fileserverHits	atomic.Int32
-	dbQuery 				*database.Queries
-	platform				string
+	fileserverHits atomic.Int32
+	dbQuery        *database.Queries
+	platform       string
 }
 
 type User struct {
-	ID					uuid.UUID		`json:"id"`
-	CreatedAt		time.Time  	`json:"created_at"`
-	UpdatedAt		time.Time		`json:"updated_at"`
-	Email				string			`json:"email"`
+	ID        uuid.UUID `json:"id"`
+	CreatedAt time.Time `json:"created_at"`
+	UpdatedAt time.Time `json:"updated_at"`
+	Email     string    `json:"email"`
 }
 
 func main() {
@@ -55,29 +56,30 @@ func main() {
 	//-- Create our traffic director (mux: multiplexer) and config struct --
 	myMux := http.NewServeMux()
 	apiCfg := &apiConfig{
-		fileserverHits: 	atomic.Int32{},
-		dbQuery: 					dbQueries,
-		platform:					platform,
+		fileserverHits: atomic.Int32{},
+		dbQuery:        dbQueries,
+		platform:       platform,
 	}
 
 	//-- Muxxing Handlers start here --
 	//---------------------------------
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
 	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
+	myMux.HandleFunc("POST /api/login", apiCfg.loginUserHandler)
 	myMux.HandleFunc("GET /api/chirps", apiCfg.retrieveAllChirpsHandler)
 	myMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.retrieveChirp)
 	myMux.HandleFunc("POST /api/chirps", apiCfg.postValidChirpHandler)
 
 	myMux.HandleFunc("GET /admin/metrics", apiCfg.metricsHandler)
 	myMux.HandleFunc("POST /admin/reset", apiCfg.clearDatabaseHandler)
-	
+
 	//- Helpers
 	fileServer := http.FileServer(http.Dir(filepathRoot))
 	appHandler := http.StripPrefix("/app", fileServer)
 
 	//- wraps with middleware for metrics
 	myMux.Handle(
-		"/app/", 
+		"/app/",
 		apiCfg.metricsIncMiddleware(appHandler),
 	)
 
@@ -85,8 +87,8 @@ func main() {
 
 	//-- Define our server using the struct --
 	server := &http.Server{
-		Addr:				":" + port,
-		Handler:		myMux,
+		Addr:    ":" + port,
+		Handler: myMux,
 	}
 
 	//-- Begin listening for HTTP --
@@ -99,4 +101,3 @@ func readinessHandler(w http.ResponseWriter, _ *http.Request) {
 	w.WriteHeader(http.StatusOK)
 	fmt.Fprint(w, "OK")
 }
-
