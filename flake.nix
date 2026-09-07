@@ -30,13 +30,13 @@
     bootdev-cli-edge = pkgs:
       pkgs.bootdev-cli.overrideAttrs (
         finalAttrs: previousAttrs: {
-          version = "1.32.1";
+          version = "1.32.2";
 
           src = pkgs.fetchFromGitHub {
             owner = "bootdotdev";
             repo = "bootdev";
             tag = "v${finalAttrs.version}";
-            hash = "sha256-DScpeUQdkzJy+RVkA8ZmGzp5Z9YzkvZViCoov64WAJk=";
+            hash = "sha256-GD/VD4NCCC4ptf37T/JfKB7m8GabhtC8NCLeeX+DfkY=";
           };
 
           vendorHash = "sha256-ZDioEU5uPCkd+kC83cLlpgzyOsnpj2S7N+lQgsQb8uY=";
@@ -58,7 +58,7 @@
           ++ [
             (bootdev-cli-edge pkgs)
           ];
-
+        /*
         shellHook = ''
           export PGDATA="$PWD/.pgdata"
 
@@ -128,6 +128,7 @@
           echo "  Socket:   $PGHOST"
           echo "  Connect:  psql"
         '';
+        */
       };
     });
   };
