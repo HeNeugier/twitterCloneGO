@@ -10,9 +10,8 @@ import (
 )
 
 type newUser struct {
-	Email            string `json:"email"`
-	Password         string `json:"password"`
-	ExpiresInSeconds int    `json:"expires_in_seconds"`
+	Email    string `json:"email"`
+	Password string `json:"password"`
 }
 
 func (cfg *apiConfig) createNewUserHandler(w http.ResponseWriter, r *http.Request) {
@@ -64,6 +63,9 @@ func (cfg *apiConfig) clearDatabaseHandler(w http.ResponseWriter, r *http.Reques
 }
 
 func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
+	const expiresIn = time.Duration(time.Hour * 1)
+	const refreshExpiresIn = time.Duration(time.Hour * 24 * 60)
+
 	decoder := json.NewDecoder(r.Body)
 	user := newUser{}
 	err := decoder.Decode(&user)
@@ -71,11 +73,6 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	if err != nil {
 		respondWithError(w, http.StatusBadRequest, "Error decoding request", err)
 		return
-	}
-
-	// Set our default timeout of 1 hour
-	if user.ExpiresInSeconds == 0 || user.ExpiresInSeconds > 3600 {
-		user.ExpiresInSeconds = 3600
 	}
 
 	dbUser, err := cfg.dbQuery.ReturnUserByEmail(r.Context(), user.Email)
@@ -93,18 +90,34 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	tok, err := auth.MakeJWT(
 		dbUser.ID,
 		cfg.secretString,
-		time.Duration(user.ExpiresInSeconds*int(time.Second)),
+		time.Duration(expiresIn),
 	)
 	if err != nil {
-		respondWithError(w, http.StatusInternalServerError, "An error occurred while making a JWT", err)
+		respondWithError(w, http.StatusInternalServerError, "An error occurred while making an auth token", err)
+		return
+	}
+
+	refreshTok := auth.MakeRefreshToken()
+	dbRefreshToken, err := cfg.dbQuery.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
+		Token:     refreshTok,
+		UserID:    dbUser.ID,
+		ExpiresAt: time.Now().Add(refreshExpiresIn),
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "An error occurred while adding the new refresh token", err)
 		return
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
-		Token:     tok,
+		ID:           dbUser.ID,
+		CreatedAt:    dbUser.CreatedAt,
+		UpdatedAt:    dbUser.UpdatedAt,
+		Email:        dbUser.Email,
+		Token:        tok,
+		RefreshToken: dbRefreshToken.Token,
 	})
+}
+
+func (cfg *apiConfig) refreshUserTokenHandler(w http.ResponseWriter, r *http.Request) {
+	return
 }

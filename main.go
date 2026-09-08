@@ -24,11 +24,12 @@ type apiConfig struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
-	Token     string    `json:"token"`
+	ID           uuid.UUID `json:"id"`
+	CreatedAt    time.Time `json:"created_at"`
+	UpdatedAt    time.Time `json:"updated_at"`
+	Email        string    `json:"email"`
+	Token        string    `json:"token"`
+	RefreshToken string    `json:"refresh_token"`
 }
 
 func main() {
@@ -72,6 +73,7 @@ func main() {
 	//---------------------------------
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
 	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
+	myMux.HandleFunc("POST /api/refresh", apiCfg.refreshUserTokenHandler)
 	myMux.HandleFunc("POST /api/login", apiCfg.loginUserHandler)
 	myMux.HandleFunc("GET /api/chirps", apiCfg.retrieveAllChirpsHandler)
 	myMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.retrieveChirp)
