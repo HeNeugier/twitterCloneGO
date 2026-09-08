@@ -20,6 +20,7 @@ type apiConfig struct {
 	fileserverHits atomic.Int32
 	dbQuery        *database.Queries
 	platform       string
+	secretString   string
 }
 
 type User struct {
@@ -27,6 +28,7 @@ type User struct {
 	CreatedAt time.Time `json:"created_at"`
 	UpdatedAt time.Time `json:"updated_at"`
 	Email     string    `json:"email"`
+	Token     string    `json:"token"`
 }
 
 func main() {
@@ -39,6 +41,10 @@ func main() {
 	platform := os.Getenv("PLATFORM")
 	if platform == "" {
 		log.Fatal("PLATFORM .env variable must be set")
+	}
+	secretString := os.Getenv("SECRET_STRING")
+	if secretString == "" {
+		log.Fatal("SECRET_STRING .env variable must be set")
 	}
 
 	//-- Open a connection to our DB --
@@ -59,6 +65,7 @@ func main() {
 		fileserverHits: atomic.Int32{},
 		dbQuery:        dbQueries,
 		platform:       platform,
+		secretString:   secretString,
 	}
 
 	//-- Muxxing Handlers start here --

@@ -7,6 +7,7 @@ import (
 	"strings"
 	"time"
 
+	"github.com/HeNeugier/twitterCloneGO/internal/auth"
 	"github.com/HeNeugier/twitterCloneGO/internal/database"
 	"github.com/google/uuid"
 )
@@ -22,14 +23,25 @@ type Chirp struct {
 func (cfg *apiConfig) postValidChirpHandler(w http.ResponseWriter, r *http.Request) {
 	//-- Define JSON structures we expect to see
 	type parameters struct {
-		Body   string    `json:"body"`
-		UserID uuid.UUID `json:"user_id"`
+		Body string `json:"body"`
+	}
+
+	// Validate the user's login status using the JWT
+	bearerToken, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Login first", err)
+		return
+	}
+	bearerUUID, err := auth.ValidateJWT(bearerToken, cfg.secretString)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Login first", err)
+		return
 	}
 
 	//-- Decode into our parameters struct
 	decoder := json.NewDecoder(r.Body)
 	params := parameters{}
-	err := decoder.Decode(&params)
+	err = decoder.Decode(&params)
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "Error decoding chirp", err)
 		return
@@ -44,7 +56,7 @@ func (cfg *apiConfig) postValidChirpHandler(w http.ResponseWriter, r *http.Reque
 	dbChirp, err := cfg.dbQuery.CreateChirp(
 		r.Context(), database.CreateChirpParams{
 			Body:   cleaned_text,
-			UserID: params.UserID,
+			UserID: bearerUUID,
 		})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "An error occurred when adding the chirp to the DB.", err)
@@ -71,7 +83,7 @@ func validateChirp(body string) (string, error) {
 	}
 
 	if len(body) > maxChirpLength {
-		return "", errors.New("Chirp is too long.")
+		return "", errors.New("chirp is too long")
 	}
 
 	return filterProfanity(body, profanity), nil

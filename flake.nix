@@ -58,7 +58,7 @@
           ++ [
             (bootdev-cli-edge pkgs)
           ];
-        /*
+
         shellHook = ''
           export PGDATA="$PWD/.pgdata"
 
@@ -128,7 +128,6 @@
           echo "  Socket:   $PGHOST"
           echo "  Connect:  psql"
         '';
-        */
       };
     });
   };
