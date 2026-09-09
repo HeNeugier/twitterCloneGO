@@ -7,6 +7,7 @@ import (
 
 	"github.com/HeNeugier/twitterCloneGO/internal/auth"
 	"github.com/HeNeugier/twitterCloneGO/internal/database"
+	"github.com/google/uuid"
 )
 
 type newUser struct {
@@ -66,6 +67,12 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	const expiresIn = time.Duration(time.Hour * 1)
 	const refreshExpiresIn = time.Duration(time.Hour * 24 * 60)
 
+	type response struct {
+		User
+		Token        string `json:"token"`
+		RefreshToken string `json:"refresh_token"`
+	}
+
 	decoder := json.NewDecoder(r.Body)
 	user := newUser{}
 	err := decoder.Decode(&user)
@@ -101,23 +108,70 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 	dbRefreshToken, err := cfg.dbQuery.CreateRefreshToken(r.Context(), database.CreateRefreshTokenParams{
 		Token:     refreshTok,
 		UserID:    dbUser.ID,
-		ExpiresAt: time.Now().Add(refreshExpiresIn),
+		ExpiresAt: time.Now().UTC().Add(refreshExpiresIn),
 	})
 	if err != nil {
 		respondWithError(w, http.StatusInternalServerError, "An error occurred while adding the new refresh token", err)
 		return
 	}
 
-	respondWithJSON(w, http.StatusOK, User{
-		ID:           dbUser.ID,
-		CreatedAt:    dbUser.CreatedAt,
-		UpdatedAt:    dbUser.UpdatedAt,
-		Email:        dbUser.Email,
+	respondWithJSON(w, http.StatusOK, response{
+		User: User{
+			ID:        dbUser.ID,
+			CreatedAt: dbUser.CreatedAt,
+			UpdatedAt: dbUser.UpdatedAt,
+			Email:     dbUser.Email,
+		},
 		Token:        tok,
 		RefreshToken: dbRefreshToken.Token,
 	})
 }
 
 func (cfg *apiConfig) refreshUserTokenHandler(w http.ResponseWriter, r *http.Request) {
-	return
+	type returnForm struct {
+		Token string `json:"token"`
+	}
+
+	// Check our header format
+	refreshTok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "bad request", err)
+		return
+	}
+
+	// Lookup the token in the DB
+	dbUser, err := cfg.dbQuery.GetUserFromRefreshToken(r.Context(), refreshTok)
+	if err != nil || dbUser == uuid.Nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorised access", err)
+		return
+	}
+
+	// Create a new access token from the returned user and known secret
+	newAccessTok, err := auth.MakeJWT(dbUser, cfg.secretString, time.Duration(time.Hour*1))
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Couldn't validate provided token", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, returnForm{
+		Token: newAccessTok,
+	})
+}
+
+func (cfg *apiConfig) revokeUserTokenHandler(w http.ResponseWriter, r *http.Request) {
+	// Check our header format
+	refreshTok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Malformed request", err)
+		return
+	}
+
+	err = cfg.dbQuery.RevokeGivenRefreshToken(r.Context(), refreshTok)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "error while revoking", err)
+		return
+	}
+
+	// Successful return
+	w.WriteHeader(http.StatusNoContent)
 }

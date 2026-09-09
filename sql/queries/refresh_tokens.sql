@@ -16,3 +16,15 @@ VALUES (
     NULL
 )
 RETURNING *;
+
+-- name: GetUserFromRefreshToken :one
+SELECT user_id
+FROM refresh_tokens
+WHERE token = $1
+AND revoked_at IS NULL
+AND expires_at > now();
+
+-- name: RevokeGivenRefreshToken :exec
+UPDATE refresh_tokens
+SET revoked_at = now(), updated_at = now()
+WHERE token = $1;
