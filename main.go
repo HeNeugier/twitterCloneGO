@@ -24,10 +24,11 @@ type apiConfig struct {
 }
 
 type User struct {
-	ID        uuid.UUID `json:"id"`
-	CreatedAt time.Time `json:"created_at"`
-	UpdatedAt time.Time `json:"updated_at"`
-	Email     string    `json:"email"`
+	ID          uuid.UUID `json:"id"`
+	CreatedAt   time.Time `json:"created_at"`
+	UpdatedAt   time.Time `json:"updated_at"`
+	Email       string    `json:"email"`
+	IsChirpyRed bool      `json:"is_chirpy_red"`
 }
 
 func main() {
@@ -77,6 +78,8 @@ func main() {
 	myMux.HandleFunc("POST /api/refresh", apiCfg.refreshUserTokenHandler)
 	myMux.HandleFunc("POST /api/revoke", apiCfg.revokeUserTokenHandler)
 	myMux.HandleFunc("POST /api/login", apiCfg.loginUserHandler)
+
+	myMux.HandleFunc("POST /api/polka/webhooks", apiCfg.userUpgradeHandler)
 
 	myMux.HandleFunc("GET /api/chirps", apiCfg.retrieveAllChirpsHandler)
 	myMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.retrieveChirp)

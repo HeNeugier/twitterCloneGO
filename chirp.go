@@ -177,7 +177,7 @@ func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request)
 	}
 	dbChirp, err := cfg.dbQuery.RetrieveChirp(r.Context(), parsedUUID)
 	if err != nil {
-		respondWithError(w, http.StatusBadRequest, "The chirp was not found.", err)
+		respondWithError(w, http.StatusNotFound, "The chirp was not found.", err)
 		return
 	}
 

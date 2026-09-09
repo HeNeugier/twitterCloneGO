@@ -1,7 +1,9 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
+	"errors"
 	"net/http"
 	"time"
 
@@ -42,10 +44,11 @@ func (cfg *apiConfig) createNewUserHandler(w http.ResponseWriter, r *http.Reques
 	}
 
 	respondWithJSON(w, http.StatusCreated, User{
-		ID:        dbUser.ID,
-		CreatedAt: dbUser.CreatedAt,
-		UpdatedAt: dbUser.UpdatedAt,
-		Email:     dbUser.Email,
+		ID:          dbUser.ID,
+		CreatedAt:   dbUser.CreatedAt,
+		UpdatedAt:   dbUser.UpdatedAt,
+		Email:       dbUser.Email,
+		IsChirpyRed: dbUser.IsChirpyRed,
 	})
 }
 
@@ -117,10 +120,11 @@ func (cfg *apiConfig) loginUserHandler(w http.ResponseWriter, r *http.Request) {
 
 	respondWithJSON(w, http.StatusOK, response{
 		User: User{
-			ID:        dbUser.ID,
-			CreatedAt: dbUser.CreatedAt,
-			UpdatedAt: dbUser.UpdatedAt,
-			Email:     dbUser.Email,
+			ID:          dbUser.ID,
+			CreatedAt:   dbUser.CreatedAt,
+			UpdatedAt:   dbUser.UpdatedAt,
+			Email:       dbUser.Email,
+			IsChirpyRed: dbUser.IsChirpyRed,
 		},
 		Token:        tok,
 		RefreshToken: dbRefreshToken.Token,
@@ -217,9 +221,51 @@ func (cfg *apiConfig) updateUserCredentialsHandler(w http.ResponseWriter, r *htt
 	}
 
 	respondWithJSON(w, http.StatusOK, User{
-		ID:        updatedUser.ID,
-		CreatedAt: updatedUser.CreatedAt,
-		UpdatedAt: updatedUser.UpdatedAt,
-		Email:     updatedUser.Email,
+		ID:          updatedUser.ID,
+		CreatedAt:   updatedUser.CreatedAt,
+		UpdatedAt:   updatedUser.UpdatedAt,
+		Email:       updatedUser.Email,
+		IsChirpyRed: updatedUser.IsChirpyRed,
 	})
+}
+
+func (cfg *apiConfig) userUpgradeHandler(w http.ResponseWriter, r *http.Request) {
+	type request struct {
+		Event string `json:"event"`
+		Data  struct {
+			UserID string `json:"user_id"`
+		} `json:"data"`
+	}
+
+	// Extract our request
+	decoder := json.NewDecoder(r.Body)
+	req := request{}
+	err := decoder.Decode(&req)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error decoding request", err)
+		return
+	}
+	if req.Event != "user.upgraded" {
+		w.WriteHeader(http.StatusNoContent)
+		return
+	}
+
+	// Parse the UUID
+	userID, err := uuid.Parse(req.Data.UserID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error decoding request", err)
+		return
+	}
+
+	_, err = cfg.dbQuery.UpgradeUserToChirpyRed(r.Context(), userID)
+	if err != nil {
+		if errors.Is(err, sql.ErrNoRows) {
+			respondWithError(w, http.StatusNotFound, "User not found", err)
+			return
+		}
+		respondWithError(w, http.StatusInternalServerError, "Could not update user", err)
+		return
+	}
+
+	w.WriteHeader(http.StatusNoContent)
 }
