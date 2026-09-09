@@ -3,6 +3,7 @@ package main
 import (
 	"encoding/json"
 	"errors"
+	"fmt"
 	"net/http"
 	"strings"
 	"time"
@@ -152,5 +153,54 @@ func (cfg *apiConfig) retrieveChirp(w http.ResponseWriter, r *http.Request) {
 		Body:      dbChirp.Body,
 		UserID:    dbChirp.UserID,
 	})
+}
 
+func (cfg *apiConfig) deleteChirpHandler(w http.ResponseWriter, r *http.Request) {
+	accessTok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorised access", err)
+		return
+	}
+
+	// Get the user ID of the request user
+	userID, err := auth.ValidateJWT(accessTok, cfg.secretString)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorised access", err)
+		return
+	}
+
+	parsedUUID, err := uuid.Parse(r.PathValue("chirpID"))
+	if err != nil {
+		// Handle the error (for example, return a 404 or bad request status)
+		respondWithError(w, http.StatusBadRequest, "The provided uuid is not valid a valid format", err)
+		return
+	}
+	dbChirp, err := cfg.dbQuery.RetrieveChirp(r.Context(), parsedUUID)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "The chirp was not found.", err)
+		return
+	}
+
+	// Check the requesting User ID matches that of the chirp retrieved
+	if userID != dbChirp.UserID {
+		respondWithError(w, http.StatusForbidden, "This is not your chirp", err)
+		return
+	}
+
+	// All checks pass, now delete
+	deletedChirp, err := cfg.dbQuery.DeleteChirp(r.Context(), dbChirp.ID)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "There was a problem deleting the chirp", err)
+		return
+	} else if deletedChirp != dbChirp.ID {
+		respondWithError(w,
+			http.StatusInternalServerError,
+			fmt.Sprintf("Chirp deleted was: %s, wanted: %s", deletedChirp, dbChirp.ID),
+			err,
+		)
+		return
+	}
+
+	// Success case
+	w.WriteHeader(http.StatusNoContent)
 }
