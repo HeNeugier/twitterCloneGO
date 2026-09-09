@@ -21,6 +21,7 @@ type apiConfig struct {
 	dbQuery        *database.Queries
 	platform       string
 	secretString   string
+	polkaKey       string
 }
 
 type User struct {
@@ -46,6 +47,10 @@ func main() {
 	if secretString == "" {
 		log.Fatal("SECRET_STRING .env variable must be set")
 	}
+	polkaKey := os.Getenv("POLKA_KEY")
+	if secretString == "" {
+		log.Fatal("POLKA_KEY .env variable must be set")
+	}
 
 	//-- Open a connection to our DB --
 	db, err := sql.Open("postgres", dbURL)
@@ -66,6 +71,7 @@ func main() {
 		dbQuery:        dbQueries,
 		platform:       platform,
 		secretString:   secretString,
+		polkaKey:       polkaKey,
 	}
 
 	//-- Muxxing Handlers start here --

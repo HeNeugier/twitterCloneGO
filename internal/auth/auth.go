@@ -95,3 +95,16 @@ func MakeRefreshToken() string {
 	rand.Read(key)
 	return hex.EncodeToString(key)
 }
+
+func GetAPIKey(headers http.Header) (string, error) {
+	apiKey := headers.Get("Authorization")
+	if apiKey == "" {
+		return "", errors.New("the 'Authorization' header is not present")
+	}
+
+	components := strings.Fields(apiKey)
+	if len(components) != 2 || components[0] != "ApiKey" {
+		return "", errors.New("the 'Authorization' header is malformed! Must be, ApiKey <key_here>")
+	}
+	return components[1], nil
+}
