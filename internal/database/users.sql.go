@@ -7,6 +7,8 @@ package database
 
 import (
 	"context"
+
+	"github.com/google/uuid"
 )
 
 const clearDatabase = `-- name: ClearDatabase :exec
@@ -56,6 +58,32 @@ WHERE email = $1
 
 func (q *Queries) ReturnUserByEmail(ctx context.Context, email string) (User, error) {
 	row := q.db.QueryRowContext(ctx, returnUserByEmail, email)
+	var i User
+	err := row.Scan(
+		&i.ID,
+		&i.CreatedAt,
+		&i.UpdatedAt,
+		&i.Email,
+		&i.HashedPassword,
+	)
+	return i, err
+}
+
+const updateEmailAndHashedPassword = `-- name: UpdateEmailAndHashedPassword :one
+UPDATE users
+SET email = $2, hashed_password = $3, updated_at = now()
+WHERE id = $1
+RETURNING id, created_at, updated_at, email, hashed_password
+`
+
+type UpdateEmailAndHashedPasswordParams struct {
+	ID             uuid.UUID
+	Email          string
+	HashedPassword string
+}
+
+func (q *Queries) UpdateEmailAndHashedPassword(ctx context.Context, arg UpdateEmailAndHashedPasswordParams) (User, error) {
+	row := q.db.QueryRowContext(ctx, updateEmailAndHashedPassword, arg.ID, arg.Email, arg.HashedPassword)
 	var i User
 	err := row.Scan(
 		&i.ID,

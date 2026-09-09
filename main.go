@@ -70,10 +70,14 @@ func main() {
 	//-- Muxxing Handlers start here --
 	//---------------------------------
 	myMux.HandleFunc("GET /api/healthz", readinessHandler)
+
 	myMux.HandleFunc("POST /api/users", apiCfg.createNewUserHandler)
+	myMux.HandleFunc("PUT /api/users", apiCfg.updateUserCredentialsHandler)
+
 	myMux.HandleFunc("POST /api/refresh", apiCfg.refreshUserTokenHandler)
 	myMux.HandleFunc("POST /api/revoke", apiCfg.revokeUserTokenHandler)
 	myMux.HandleFunc("POST /api/login", apiCfg.loginUserHandler)
+
 	myMux.HandleFunc("GET /api/chirps", apiCfg.retrieveAllChirpsHandler)
 	myMux.HandleFunc("GET /api/chirps/{chirpID}", apiCfg.retrieveChirp)
 	myMux.HandleFunc("POST /api/chirps", apiCfg.postValidChirpHandler)

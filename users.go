@@ -175,3 +175,51 @@ func (cfg *apiConfig) revokeUserTokenHandler(w http.ResponseWriter, r *http.Requ
 	// Successful return
 	w.WriteHeader(http.StatusNoContent)
 }
+
+func (cfg *apiConfig) updateUserCredentialsHandler(w http.ResponseWriter, r *http.Request) {
+	// NOTE in this case we expect the ACCESS token. NOT the REFRESH
+	accessTok, err := auth.GetBearerToken(r.Header)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorised access", err)
+		return
+	}
+
+	userID, err := auth.ValidateJWT(accessTok, cfg.secretString)
+	if err != nil {
+		respondWithError(w, http.StatusUnauthorized, "Unauthorised access", err)
+		return
+	}
+
+	// Extract our new email and passwords
+	decoder := json.NewDecoder(r.Body)
+	user := newUser{}
+	err = decoder.Decode(&user)
+	if err != nil {
+		respondWithError(w, http.StatusBadRequest, "Error decoding request", err)
+		return
+	}
+
+	// Hash the new password
+	hashedPw, err := auth.HashPassword(user.Password)
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Problem hashing password", err)
+		return
+	}
+
+	updatedUser, err := cfg.dbQuery.UpdateEmailAndHashedPassword(r.Context(), database.UpdateEmailAndHashedPasswordParams{
+		ID:             userID,
+		HashedPassword: hashedPw,
+		Email:          user.Email,
+	})
+	if err != nil {
+		respondWithError(w, http.StatusInternalServerError, "Failed to update credentials", err)
+		return
+	}
+
+	respondWithJSON(w, http.StatusOK, User{
+		ID:        updatedUser.ID,
+		CreatedAt: updatedUser.CreatedAt,
+		UpdatedAt: updatedUser.UpdatedAt,
+		Email:     updatedUser.Email,
+	})
+}
