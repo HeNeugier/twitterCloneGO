@@ -1,6 +1,7 @@
 package main
 
 import (
+	"database/sql"
 	"encoding/json"
 	"errors"
 	"fmt"
@@ -105,15 +106,39 @@ func filterProfanity(message string, profanity []string) string {
 }
 
 func (cfg *apiConfig) retrieveAllChirpsHandler(w http.ResponseWriter, r *http.Request) {
-	dbChirps, err := cfg.dbQuery.RetrieveChirps(r.Context())
-	if err != nil {
-		respondWithError(
-			w,
-			http.StatusInternalServerError,
-			"An error occurred when retrieving the chirps.",
-			err,
-		)
-		return
+	// Setup our variables
+	var dbChirps []database.Chirp
+	var err error
+
+	// If we have the optional 'author_id'
+	authorID := r.URL.Query().Get("author_id")
+	if authorID != "" {
+		uuidID, err := uuid.Parse(authorID)
+		if err != nil {
+			respondWithError(w, http.StatusBadRequest, "Malformed author_id", err)
+			return
+		}
+
+		dbChirps, err = cfg.dbQuery.GetAllUserChirps(r.Context(), uuidID)
+		if err != nil {
+			if errors.Is(err, sql.ErrNoRows) {
+				respondWithError(w, http.StatusNotFound, "User not found", err)
+				return
+			}
+			respondWithError(w, http.StatusInternalServerError, "Database error while retrieving user chirps", err)
+			return
+		}
+	} else {
+		dbChirps, err = cfg.dbQuery.RetrieveChirps(r.Context())
+		if err != nil {
+			respondWithError(
+				w,
+				http.StatusInternalServerError,
+				"An error occurred when retrieving the chirps.",
+				err,
+			)
+			return
+		}
 	}
 
 	//-- Cast our dbChirp type to our expected form Chirp
@@ -127,9 +152,7 @@ func (cfg *apiConfig) retrieveAllChirpsHandler(w http.ResponseWriter, r *http.Re
 			UserID:    dbChirp.UserID,
 		})
 	}
-
 	respondWithJSON(w, http.StatusOK, chirps)
-
 }
 
 func (cfg *apiConfig) retrieveChirp(w http.ResponseWriter, r *http.Request) {
