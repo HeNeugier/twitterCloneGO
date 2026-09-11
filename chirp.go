@@ -6,6 +6,8 @@ import (
 	"errors"
 	"fmt"
 	"net/http"
+	"slices"
+	"sort"
 	"strings"
 	"time"
 
@@ -110,8 +112,16 @@ func (cfg *apiConfig) retrieveAllChirpsHandler(w http.ResponseWriter, r *http.Re
 	var dbChirps []database.Chirp
 	var err error
 
-	// If we have the optional 'author_id'
+	// If we have the optional 'author_id' or 'sort'
 	authorID := r.URL.Query().Get("author_id")
+	sortOrder := r.URL.Query().Get("sort")
+
+	// Check 'sort' contains a valid Order
+	if !slices.Contains([]string{"asc", "desc", ""}, sortOrder) {
+		respondWithError(w, http.StatusBadRequest, "'sort' option must only be one of 'desc', 'asc' or left empty", err)
+		return
+	}
+
 	if authorID != "" {
 		uuidID, err := uuid.Parse(authorID)
 		if err != nil {
@@ -152,6 +162,14 @@ func (cfg *apiConfig) retrieveAllChirpsHandler(w http.ResponseWriter, r *http.Re
 			UserID:    dbChirp.UserID,
 		})
 	}
+	if sortOrder == "desc" {
+		sort.Slice(
+			chirps,
+			func(i, j int) bool {
+				return chirps[i].CreatedAt.After(chirps[j].CreatedAt)
+			})
+	}
+
 	respondWithJSON(w, http.StatusOK, chirps)
 }
 
